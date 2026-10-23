@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 
 import * as CursorSdkCatalog from "./CursorSdkCatalog.ts";
+import { CursorSdkError } from "./sdk.ts";
 
 const user = {
   apiKeyName: "test-key",
@@ -43,6 +44,44 @@ describe("CursorSdkCatalog", () => {
       expect((yield* catalog.read("test-key")).models).toEqual([model]);
       expect((yield* catalog.read("test-key")).models).toEqual([model]);
       expect(modelCalls).toBe(3);
+    }),
+  );
+
+  it.effect("keeps discovered models when the identity endpoint is unavailable", () =>
+    Effect.gen(function* () {
+      const catalog = yield* CursorSdkCatalog.makeCursorSdkCatalog({
+        readUser: () =>
+          Effect.fail(
+            new CursorSdkCatalog.CursorSdkCatalogError({
+              authenticationFailure: false,
+              cause: new CursorSdkError("[feature_unavailable] Not available for this team.", {
+                code: "feature_unavailable",
+                status: 403,
+              }),
+            }),
+          ),
+        readModels: () => Effect.succeed([model]),
+      });
+
+      expect(yield* catalog.read("enterprise-key")).toEqual({ user: undefined, models: [model] });
+    }),
+  );
+
+  it.effect("fails when the identity endpoint rejects the key", () =>
+    Effect.gen(function* () {
+      const catalog = yield* CursorSdkCatalog.makeCursorSdkCatalog({
+        readUser: () =>
+          Effect.fail(
+            new CursorSdkCatalog.CursorSdkCatalogError({
+              authenticationFailure: true,
+              cause: new Error("unauthorized"),
+            }),
+          ),
+        readModels: () => Effect.succeed([model]),
+      });
+
+      const error = yield* Effect.flip(catalog.read("revoked-key"));
+      expect(error.authenticationFailure).toBe(true);
     }),
   );
 });

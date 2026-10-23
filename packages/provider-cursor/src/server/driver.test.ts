@@ -35,7 +35,7 @@ import * as CursorKeychain from "./CursorKeychain.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
-import { Cursor } from "./sdk.ts";
+import { AuthenticationError, Cursor } from "./sdk.ts";
 
 const layerTest = TestProviderHost.layer({ runBackgroundWork: false }).pipe(
   Layer.provideMerge(NodeServices.layer),
@@ -348,7 +348,7 @@ it.layer(layerTest)("CursorDriver", (it) => {
       const catalogDefault = yield* startTurn();
       const explicitWindow = yield* startTurn("500k");
       const unknownWindow = yield* startTurn("max");
-      me.mockRejectedValue(new Error("Cursor is unreachable"));
+      me.mockRejectedValue(new AuthenticationError("Invalid API key"));
       expect((yield* instance.snapshot.refresh).status).toBe("error");
       const retainedDefault = yield* startTurn();
 

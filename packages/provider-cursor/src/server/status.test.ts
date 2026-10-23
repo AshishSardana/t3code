@@ -193,6 +193,27 @@ describe("checkCursorProviderStatus", () => {
     }),
   );
 
+  it.effect("is ready with a generic label when the Cursor identity is unavailable", () =>
+    Effect.gen(function* () {
+      const provider = yield* checkCursorProviderStatus(baseCursorSettings, {
+        CURSOR_API_KEY: "enterprise-key",
+      }).pipe(
+        Effect.provide(
+          CursorSdkCatalog.layerTest(() =>
+            Effect.succeed({ user: undefined, models: [sdkParameterizedModel] }),
+          ),
+        ),
+      );
+
+      expect(provider).toMatchObject({
+        status: "ready",
+        auth: { status: "authenticated", type: "api-key", label: "Cursor API key" },
+        models: [{ slug: "claude-opus-4-8", isCustom: false }],
+      });
+      expect(provider.auth).not.toHaveProperty("email");
+    }),
+  );
+
   it.effect("surfaces SDK authentication failures", () =>
     Effect.gen(function* () {
       const provider = yield* checkCursorProviderStatus(baseCursorSettings, {
